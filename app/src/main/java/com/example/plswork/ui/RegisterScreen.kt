@@ -11,7 +11,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
-import com.example.plswork.ui.ui.theme.PlsworkTheme
+import com.example.plswork.ui.theme.PlsworkTheme
 
 
 @Composable
