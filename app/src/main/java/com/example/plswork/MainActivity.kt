@@ -23,15 +23,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.plswork.ui.theme.PlsworkTheme
 import kotlinx.coroutines.launch
+import com.example.plswork.ui.LoginScreen
+import com.example.plswork.ui.RegisterScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             PlsworkTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    PantryPalApp()
+//                Surface(modifier = Modifier.fillMaxSize()) {
+//                    PantryPalApp()
+//                }
+                LoginScreen { email, password ->
+                    println("Email: $email, Password: $password")
                 }
+
+
+//                RegisterScreen { name, email, password ->
+//                    println("Name: $name, Email: $email, Password: $password")
+//                }
+
             }
         }
     }
