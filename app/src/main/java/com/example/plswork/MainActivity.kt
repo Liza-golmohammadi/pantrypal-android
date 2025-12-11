@@ -26,6 +26,3 @@ class MainActivity : ComponentActivity() {
 }
 
 
-// ---------------------------------------------------- //
-// BELOW THIS: all your PantryPalApp UI + Ingredient + Recipe UI
-// ---------------------------------------------------- //

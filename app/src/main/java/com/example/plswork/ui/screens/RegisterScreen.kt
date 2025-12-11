@@ -1,4 +1,4 @@
-package com.example.plswork.ui
+package com.example.plswork.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,7 +11,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
-import com.example.plswork.ui.theme.PlsworkTheme
 
 
 @Composable

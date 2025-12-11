@@ -1,4 +1,4 @@
-package com.example.plswork.ui
+package com.example.plswork.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions

@@ -1,10 +1,11 @@
-package com.example.plswork
+package com.example.plswork.network
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
-
+import retrofit2.http.Path
+import com.example.plswork.data.RecipeDetail
 data class Recipe(
     val id: Int,
     val title: String,
@@ -20,7 +21,18 @@ interface SpoonacularApi {
         @Query("ingredients") ingredients: String,
         @Query("number") number: Int = 10
     ): List<Recipe>
+
+
+    @GET("recipes/{id}/information")
+    suspend fun getRecipeDetails(
+        @Path("id") recipeId: Int,
+        @Query("apiKey") apiKey: String,
+        @Query("includeNutrition") includeNutrition: Boolean = false
+    ): RecipeDetail
+
 }
+
+
 
 object ApiClient {
     private const val BASE_URL = "https://api.spoonacular.com/"

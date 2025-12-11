@@ -4,9 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.plswork.ui.LoginScreen
-import com.example.plswork.ui.RegisterScreen
-import com.example.plswork.PantryPalApp
+import com.example.plswork.ui.screens.LoginScreen
+import com.example.plswork.ui.screens.RegisterScreen
+import com.example.plswork.ui.screens.PantryPalApp
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {

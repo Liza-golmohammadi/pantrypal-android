@@ -1,4 +1,4 @@
-package com.example.plswork
+package com.example.plswork.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +18,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.plswork.network.ApiClient
+import com.example.plswork.network.Recipe
 import kotlinx.coroutines.launch
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import com.example.plswork.data.RecipeDetail
+
 
 // YOUR COLORS
 val PinkHeader = Color(0xFFFFB6C1)
@@ -85,7 +92,7 @@ fun PantryPalApp() {
 
                             // API CALL
                             val result = ApiClient.api.searchRecipes(
-                                apiKey = "YOUR_API_KEY",
+                                apiKey = "7bcaab07e4204dacab5366fe69a4c5f2",
                                 ingredients = ingredientsList,
                                 number = 10
                             )
@@ -264,82 +271,144 @@ fun RecipeResultsScreen(
     recipes: List<Recipe>,
     onBack: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PinkBackground)
-    ) {
+    // state for detail screen
+    var showDetailScreen by remember { mutableStateOf(false) }
+    var selectedRecipeDetail by remember { mutableStateOf<RecipeDetail?>(null) }
+    var isLoadingDetail by remember { mutableStateOf(false) }
 
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                "[← Back]",
-                modifier = Modifier.clickable { onBack() }
-            )
-            Text(
-                "PANTRY PAL",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic
-            )
-        }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(PinkHeader)
-                .padding(14.dp)
-        ) {
-            Text("Recipe Results:", fontSize = 20.sp)
-        }
-
-        Text(
-            "Selected Ingredients:",
-            modifier = Modifier.padding(16.dp)
+    if (showDetailScreen) {
+        // ---------- DETAIL SCREEN ----------
+        RecipeDetailScreen(
+            recipeDetail = selectedRecipeDetail,
+            isLoading = isLoadingDetail,
+            onBack = {
+                showDetailScreen = false
+                selectedRecipeDetail = null
+            },
+            onOpenWebsite = {
+                selectedRecipeDetail?.sourceUrl?.let { url ->
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                }
+            },
+            onOpenYouTube = {
+                val query = selectedRecipeDetail?.title
+                    ?.replace(" ", "+")
+                    ?.plus("+recipe")
+                val url = "https://www.youtube.com/results?search_query=$query"
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(intent)
+            }
         )
-
-        Row(modifier = Modifier.padding(start = 16.dp)) {
-            selectedIngredients.forEach { ing -> Text(ing.emoji, fontSize = 32.sp) }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(PinkHeader)
-                .padding(14.dp)
-        ) {
-            Text("${recipes.size} Recipes Found")
-        }
-
-        LazyColumn(
+    } else {
+        // ---------- EXISTING RESULTS LIST ----------
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .background(PinkBackground)
         ) {
-            items(recipes) { recipe ->
-                RecipeCard(recipe)
+
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "[← Back]",
+                    modifier = Modifier.clickable { onBack() }
+                )
+                Text(
+                    "PANTRY PAL",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Italic
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PinkHeader)
+                    .padding(14.dp)
+            ) {
+                Text("Recipe Results:", fontSize = 20.sp)
+            }
+
+            Text(
+                "Selected Ingredients:",
+                modifier = Modifier.padding(16.dp)
+            )
+
+            Row(modifier = Modifier.padding(start = 16.dp)) {
+                selectedIngredients.forEach { ing -> Text(ing.emoji, fontSize = 32.sp) }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PinkHeader)
+                    .padding(14.dp)
+            ) {
+                Text("${recipes.size} Recipes Found")
+            }
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(recipes) { recipe ->
+                    RecipeCard(
+                        recipe = recipe,
+                        onClick = {
+                            // when user taps a recipe → load details then show detail screen
+                            showDetailScreen = true
+                            isLoadingDetail = true
+
+                            scope.launch {
+                                try {
+                                    val details = ApiClient.api.getRecipeDetails(
+                                        recipeId = recipe.id,
+                                        apiKey = "7bcaab07e4204dacab5366fe69a4c5f2",
+                                        includeNutrition = false
+                                    )
+                                    selectedRecipeDetail = details
+                                } catch (e: Exception) {
+                                    selectedRecipeDetail = null
+                                } finally {
+                                    isLoadingDetail = false
+                                }
+                            }
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 
+
 @Composable
-fun RecipeCard(recipe: Recipe) {
+fun RecipeCard(
+    recipe: Recipe,
+    onClick: () -> Unit
+) {
     val isExactMatch = recipe.missedIngredientCount == 0
 
     val matchPercentage =
         if (recipe.usedIngredientCount + recipe.missedIngredientCount > 0)
             (recipe.usedIngredientCount.toFloat() /
-                    (recipe.usedIngredientCount +
-                            recipe.missedIngredientCount) * 100).toInt()
+                    (recipe.usedIngredientCount + recipe.missedIngredientCount) * 100).toInt()
         else 100
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },   // <— now responds to taps
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(12.dp)
@@ -383,7 +452,15 @@ fun RecipeCard(recipe: Recipe) {
                 }
 
                 Text("⏱️ 15-30 mins  👤 2-4 servings", fontSize = 11.sp)
+
+                Text(
+                    text = "👉 Tap card for full recipe",
+                    fontSize = 10.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = DarkPink
+                )
             }
         }
     }
 }
+
