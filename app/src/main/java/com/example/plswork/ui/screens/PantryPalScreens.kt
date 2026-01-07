@@ -18,14 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.plswork.network.ApiClient
 import com.example.plswork.network.Recipe
-import kotlinx.coroutines.launch
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.ui.platform.LocalContext
-import com.example.plswork.data.RecipeDetail
-
+import com.example.plswork.Constants
+import com.example.plswork.viewmodel.RecipeViewModel
 
 // YOUR COLORS
 val PinkHeader = Color(0xFFFFB6C1)
@@ -40,90 +35,6 @@ data class Ingredient(
     val name: String,
     val emoji: String
 )
-
-// ------------------ MAIN APP UI ------------------ //
-
-@Composable
-fun PantryPalApp() {
-    val availableIngredients = remember {
-        listOf(
-            Ingredient("Tomato", "🍅"),
-            Ingredient("Egg", "🥚"),
-            Ingredient("Rice", "🍚"),
-            Ingredient("Chicken", "🍗"),
-            Ingredient("Onion", "🧅"),
-            Ingredient("Garlic", "🧄"),
-            Ingredient("Pepper", "🌶️"),
-            Ingredient("Salt", "🧂"),
-            Ingredient("Potato", "🥔"),
-            Ingredient("Carrot", "🥕")
-        )
-    }
-
-    var selectedIngredients by remember { mutableStateOf(listOf<Ingredient>()) }
-    var recipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showResults by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
-
-    if (!showResults) {
-        IngredientSelectionScreen(
-            availableIngredients = availableIngredients,
-            selectedIngredients = selectedIngredients,
-            onIngredientSelected = { ingredient ->
-                if (!selectedIngredients.contains(ingredient)) {
-                    selectedIngredients = selectedIngredients + ingredient
-                }
-            },
-            onIngredientRemoved = { ingredient ->
-                selectedIngredients = selectedIngredients.filter { it != ingredient }
-            },
-            onFindRecipes = {
-                if (selectedIngredients.isNotEmpty()) {
-                    isLoading = true
-                    errorMessage = null
-
-                    scope.launch {
-                        try {
-                            val ingredientNames = selectedIngredients.map { it.name.lowercase() }
-                            val ingredientsList = ingredientNames.joinToString(",")
-
-                            // API CALL
-                            val result = ApiClient.api.searchRecipes(
-                                apiKey = "7bcaab07e4204dacab5366fe69a4c5f2",
-                                ingredients = ingredientsList,
-                                number = 10
-                            )
-
-                            recipes = result
-                            isLoading = false
-                            showResults = true
-
-                        } catch (e: Exception) {
-                            errorMessage = "Error: ${e.message}"
-                            isLoading = false
-                        }
-                    }
-                }
-            },
-            isLoading = isLoading,
-            errorMessage = errorMessage
-        )
-    } else {
-        RecipeResultsScreen(
-            selectedIngredients = selectedIngredients,
-            recipes = recipes,
-            onBack = {
-                showResults = false
-                recipes = emptyList()
-            }
-        )
-    }
-}
-
-
 
 // ------------------ INGREDIENT SELECTION ------------------ //
 
@@ -142,7 +53,6 @@ fun IngredientSelectionScreen(
             .fillMaxSize()
             .background(PinkBackground)
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -170,7 +80,6 @@ fun IngredientSelectionScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -179,7 +88,6 @@ fun IngredientSelectionScreen(
         ) {
             Text("Search Ingredients:", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         }
-
 
         if (selectedIngredients.isNotEmpty()) {
             Column(
@@ -261,141 +169,116 @@ fun IngredientSelectionScreen(
     }
 }
 
-
-
-// ------------------ RESULTS SCREEN + RECIPE CARD ------------------ //
+// ------------------ RESULTS SCREEN ------------------ //
 
 @Composable
 fun RecipeResultsScreen(
     selectedIngredients: List<Ingredient>,
     recipes: List<Recipe>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onRecipeClick: (Int) -> Unit = {},
+    viewModel: RecipeViewModel? = null
 ) {
-    // state for detail screen
-    var showDetailScreen by remember { mutableStateOf(false) }
-    var selectedRecipeDetail by remember { mutableStateOf<RecipeDetail?>(null) }
-    var isLoadingDetail by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PinkBackground)
+    ) {
+        // Header with back button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PinkHeader)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "[← Back]",
+                modifier = Modifier.clickable { onBack() },
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "PANTRY PAL",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                fontStyle = FontStyle.Italic,
+                color = RedTitle
+            )
+            Spacer(modifier = Modifier.width(50.dp))
+        }
 
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+        // Recipe Results header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PinkHeader)
+                .padding(14.dp)
+        ) {
+            Text("Recipe Results:", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        }
 
-    if (showDetailScreen) {
-        // ---------- DETAIL SCREEN ----------
-        RecipeDetailScreen(
-            recipeDetail = selectedRecipeDetail,
-            isLoading = isLoadingDetail,
-            onBack = {
-                showDetailScreen = false
-                selectedRecipeDetail = null
-            },
-            onOpenWebsite = {
-                selectedRecipeDetail?.sourceUrl?.let { url ->
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
+        // Selected ingredients display
+        if (selectedIngredients.isNotEmpty()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Selected Ingredients:",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    selectedIngredients.take(5).forEach { ing ->
+                        Text(ing.emoji, fontSize = 32.sp)
+                    }
                 }
-            },
-            onOpenYouTube = {
-                val query = selectedRecipeDetail?.title
-                    ?.replace(" ", "+")
-                    ?.plus("+recipe")
-                val url = "https://www.youtube.com/results?search_query=$query"
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                context.startActivity(intent)
             }
-        )
-    } else {
-        // ---------- EXISTING RESULTS LIST ----------
-        Column(
+        }
+
+        // Recipe count
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PinkHeader)
+                .padding(14.dp)
+        ) {
+            Text(
+                "${recipes.size} Recipes Found",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Recipe cards list
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(PinkBackground)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "[← Back]",
-                    modifier = Modifier.clickable { onBack() }
+            items(recipes) { recipe ->
+                RecipeCard(
+                    recipe = recipe,
+                    onClick = {
+                        onRecipeClick(recipe.id)
+                    },
+                    viewModel = viewModel
                 )
-                Text(
-                    "PANTRY PAL",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Italic
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PinkHeader)
-                    .padding(14.dp)
-            ) {
-                Text("Recipe Results:", fontSize = 20.sp)
-            }
-
-            Text(
-                "Selected Ingredients:",
-                modifier = Modifier.padding(16.dp)
-            )
-
-            Row(modifier = Modifier.padding(start = 16.dp)) {
-                selectedIngredients.forEach { ing -> Text(ing.emoji, fontSize = 32.sp) }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PinkHeader)
-                    .padding(14.dp)
-            ) {
-                Text("${recipes.size} Recipes Found")
-            }
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(recipes) { recipe ->
-                    RecipeCard(
-                        recipe = recipe,
-                        onClick = {
-                            // when user taps a recipe → load details then show detail screen
-                            showDetailScreen = true
-                            isLoadingDetail = true
-
-                            scope.launch {
-                                try {
-                                    val details = ApiClient.api.getRecipeDetails(
-                                        recipeId = recipe.id,
-                                        apiKey = "7bcaab07e4204dacab5366fe69a4c5f2",
-                                        includeNutrition = false
-                                    )
-                                    selectedRecipeDetail = details
-                                } catch (e: Exception) {
-                                    selectedRecipeDetail = null
-                                } finally {
-                                    isLoadingDetail = false
-                                }
-                            }
-                        }
-                    )
-                }
             }
         }
     }
 }
 
-
+// ------------------ RECIPE CARD ------------------ //
 
 @Composable
 fun RecipeCard(
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    viewModel: RecipeViewModel? = null
 ) {
     val isExactMatch = recipe.missedIngredientCount == 0
 
@@ -405,16 +288,22 @@ fun RecipeCard(
                     (recipe.usedIngredientCount + recipe.missedIngredientCount) * 100).toInt()
         else 100
 
+    // Check if this recipe is favorited
+    // Check if this recipe is favorited - observe favorites state
+    val favorites by viewModel?.favorites?.collectAsState() ?: remember { mutableStateOf(emptySet()) }
+    val isFavorite = favorites.contains(recipe.id)
+
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },   // <— now responds to taps
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
-
+            // Recipe image placeholder
             Box(
                 modifier = Modifier
                     .size(100.dp)
@@ -426,9 +315,37 @@ fun RecipeCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column {
-                Text(recipe.title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.weight(1f)) {
+                // Title and heart button row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        recipe.title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
 
+                    // FAVORITE HEART BUTTON
+                    if (viewModel != null) {
+                        IconButton(
+                            onClick = { viewModel.toggleFavorite(recipe.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Text(
+                                text = if (isFavorite) "❤️" else "🤍",
+                                fontSize = 20.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Match percentage badge
                 Box(
                     modifier = Modifier
                         .background(
@@ -441,17 +358,23 @@ fun RecipeCard(
                         text = if (isExactMatch) "⭐ EXACT MATCH"
                         else "🟡 $matchPercentage% MATCH",
                         fontSize = 11.sp,
-                        color = Color.White
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Ingredient info
                 if (isExactMatch) {
-                    Text("✓ All ingredients available", fontSize = 12.sp)
+                    Text("✓ All ingredients available", fontSize = 12.sp, color = GreenMatch)
                 } else {
-                    Text("+ Need ${recipe.missedIngredientCount} more", fontSize = 12.sp)
+                    Text("+ Need ${recipe.missedIngredientCount} more", fontSize = 12.sp, color = Color.Gray)
                 }
 
-                Text("⏱️ 15-30 mins  👤 2-4 servings", fontSize = 11.sp)
+                Text("⏱️ 15-30 mins  👤 2-4 servings", fontSize = 11.sp, color = Color.Gray)
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "👉 Tap card for full recipe",
@@ -463,4 +386,3 @@ fun RecipeCard(
         }
     }
 }
-
