@@ -11,6 +11,7 @@ import com.example.plswork.ui.screens.RegisterScreen
 import com.example.plswork.ui.screens.MainScreen
 import com.example.plswork.viewmodel.RecipeViewModel
 import com.example.plswork.auth.AuthManager
+import com.example.plswork.ui.screens.ProfileScreen
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {
@@ -62,15 +63,20 @@ fun AppNavGraph(navController: NavHostController) {
         }
 
         // Main app with bottom navigation
-        // Main app with bottom navigation
         composable("main") {
             MainScreen(
                 recipeViewModel = recipeViewModel,
+                navController = navController,
                 onLogout = {
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+        composable("profile") {
+            ProfileScreen(
+                navController = navController
             )
         }
 

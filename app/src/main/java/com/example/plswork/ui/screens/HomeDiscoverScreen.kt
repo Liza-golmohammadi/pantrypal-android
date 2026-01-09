@@ -25,7 +25,8 @@ import com.example.plswork.ui.theme.PinkHeader
 import com.example.plswork.viewmodel.RecipeDetailUiState
 import com.example.plswork.viewmodel.RecipeUiState
 import com.example.plswork.viewmodel.RecipeViewModel
-
+import androidx.navigation.NavController
+import com.example.plswork.ui.components.ProfileIconButton
 data class MealCategory(
     val name: String,
     val emoji: String,
@@ -34,7 +35,7 @@ data class MealCategory(
 )
 
 @Composable
-fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
+fun HomeDiscoverScreen(viewModel: RecipeViewModel, navController: NavController) {
     val categories = listOf(
         MealCategory("Low Carb", "🥗", "dinner", "low carb"),
         MealCategory("+45g Protein Dinners", "🍗", "dinner", "high protein"),
@@ -126,10 +127,9 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
-                            modifier = Modifier.size(32.dp),
+                        ProfileIconButton(
+                            navController = navController,
+                            size = 28,
                             tint = Color.Black
                         )
                     }

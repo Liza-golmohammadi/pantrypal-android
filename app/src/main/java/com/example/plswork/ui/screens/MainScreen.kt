@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.plswork.viewmodel.RecipeViewModel
 import com.example.plswork.auth.AuthManager
+import com.example.plswork.ui.components.ProfileIconButton
+import androidx.navigation.NavHostController
 
 sealed class BottomNavItem(
     val route: String,
@@ -30,6 +32,7 @@ sealed class BottomNavItem(
 @Composable
 fun MainScreen(
     recipeViewModel: RecipeViewModel = viewModel(),
+    navController: NavHostController,
     onLogout: (() -> Unit)? = null
 ) {
     var selectedTab by remember { mutableStateOf<BottomNavItem>(BottomNavItem.Home) }
@@ -120,7 +123,7 @@ fun MainScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedTab) {
-                is BottomNavItem.Home -> HomeDiscoverScreen(recipeViewModel)  // Add the parameter back!
+                is BottomNavItem.Home -> HomeDiscoverScreen(recipeViewModel, navController = navController)  // Add the parameter back!
                 is BottomNavItem.Search -> SearchScreen(recipeViewModel)
                 is BottomNavItem.ShoppingList -> ShoppingListScreen()
                 is BottomNavItem.Skills -> SkillsScreen()

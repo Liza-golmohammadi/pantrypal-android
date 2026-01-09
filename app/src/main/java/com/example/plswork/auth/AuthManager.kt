@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.auth.EmailAuthProvider
 
 class AuthManager {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -77,4 +78,52 @@ class AuthManager {
 
     // Get user ID
     fun getUserId(): String? = getCurrentUser()?.uid
+
+    // Re-authenticate user
+    private suspend fun reauthenticate(currentPassword: String): kotlin.Result<Unit> {
+        return try {
+            val user = getCurrentUser() ?: return kotlin.Result.failure(Exception("No user logged in"))
+            val email = user.email ?: return kotlin.Result.failure(Exception("No email found"))
+
+            val credential = EmailAuthProvider.getCredential(email, currentPassword)
+            user.reauthenticate(credential).await()
+
+            kotlin.Result.success(Unit)
+        } catch (e: Exception) {
+            kotlin.Result.failure(e)
+        }
+    }
+
+    // Change email
+    suspend fun changeEmail(currentPassword: String, newEmail: String): kotlin.Result<Unit> {
+        return try {
+            val user = getCurrentUser() ?: return kotlin.Result.failure(Exception("No user logged in"))
+
+            val reauth = reauthenticate(currentPassword)
+            if (reauth.isFailure) return kotlin.Result.failure(reauth.exceptionOrNull()!!)
+
+            user.updateEmail(newEmail).await()
+
+            kotlin.Result.success(Unit)
+        } catch (e: Exception) {
+            kotlin.Result.failure(e)
+        }
+    }
+
+    // Change password
+    suspend fun changePassword(currentPassword: String, newPassword: String): kotlin.Result<Unit> {
+        return try {
+            val user = getCurrentUser() ?: return kotlin.Result.failure(Exception("No user logged in"))
+
+            val reauth = reauthenticate(currentPassword)
+            if (reauth.isFailure) return kotlin.Result.failure(reauth.exceptionOrNull()!!)
+
+            user.updatePassword(newPassword).await()
+
+            kotlin.Result.success(Unit)
+        } catch (e: Exception) {
+            kotlin.Result.failure(e)
+        }
+    }
+
 }
