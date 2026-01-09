@@ -5,11 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,9 +19,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.plswork.viewmodel.RecipeViewModel
-import com.example.plswork.viewmodel.RecipeUiState
+import com.example.plswork.ui.theme.DarkPink
+import com.example.plswork.ui.theme.PinkBackground
+import com.example.plswork.ui.theme.PinkHeader
 import com.example.plswork.viewmodel.RecipeDetailUiState
+import com.example.plswork.viewmodel.RecipeUiState
+import com.example.plswork.viewmodel.RecipeViewModel
 
 data class MealCategory(
     val name: String,
@@ -32,7 +37,7 @@ data class MealCategory(
 fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
     val categories = listOf(
         MealCategory("Low Carb", "🥗", "dinner", "low carb"),
-        MealCategory("+45g Protein", "🍗", "dinner", "high protein"),
+        MealCategory("+45g Protein Dinners", "🍗", "dinner", "high protein"),
         MealCategory("Meal Prep", "🍱", "meal prep", null),
         MealCategory("Freezer Friendly", "🧊", "freezer meals", null),
         MealCategory("High Protein, Low Cal", "💪", "chicken", "high protein"),
@@ -41,11 +46,11 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
 
     val recipeState by viewModel.recipeState.collectAsState()
     val recipeDetailState by viewModel.recipeDetailState.collectAsState()
+
     var showRecipeList by remember { mutableStateOf(false) }
     var showRecipeDetail by remember { mutableStateOf(false) }
     var selectedRecipeId by remember { mutableStateOf<Int?>(null) }
 
-    // Watch for recipe state changes
     LaunchedEffect(recipeState) {
         if (recipeState is RecipeUiState.Success) {
             showRecipeList = true
@@ -54,13 +59,16 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
 
     when {
         showRecipeDetail && selectedRecipeId != null -> {
-            // Show recipe detail
             when (val state = recipeDetailState) {
                 is RecipeDetailUiState.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator(color = DarkPink)
                     }
                 }
+
                 is RecipeDetailUiState.Success -> {
                     RecipeDetailScreen(
                         recipeDetail = state.recipeDetail,
@@ -74,11 +82,12 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
                         onOpenYouTube = {}
                     )
                 }
-                else -> {}
+
+                else -> Unit
             }
         }
+
         showRecipeList -> {
-            // Show recipe list
             when (val state = recipeState) {
                 is RecipeUiState.Success -> {
                     RecipeResultsScreen(
@@ -93,56 +102,74 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
                             showRecipeDetail = true
                             viewModel.getRecipeDetails(recipeId)
                         },
-                        viewModel = viewModel  // PASSES VIEWMODEL FOR FAVORITES
+                        viewModel = viewModel
                     )
                 }
-                else -> {}
+
+                else -> Unit
             }
         }
+
         else -> {
-            // Show home screen
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(PinkBackground)
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
             ) {
+                // Top bar
                 item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "Profile",
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier.size(32.dp),
                             tint = Color.Black
                         )
                     }
                 }
 
+                // Title
                 item {
                     Text(
                         text = "Plan your week",
-                        fontSize = 32.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
 
+                // 3×2 grid categories
                 item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(categories.chunked(2)) { rowCategories ->
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        categories.chunked(2).forEach { rowCategories ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
                                 rowCategories.forEach { category ->
-                                    CategoryCard(category) {
-                                        viewModel.searchByQuery(category.query, category.diet)
-                                    }
+                                    CategoryCard(
+                                        category = category,
+                                        onClick = {
+                                            viewModel.searchByQuery(
+                                                category.query,
+                                                category.diet
+                                            )
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (rowCategories.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
                         }
@@ -150,43 +177,57 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
+                // Personalised picks title
                 item {
                     Text(
                         text = "Personalised picks for you",
-                        fontSize = 24.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Horizontal big cards
                 item {
-                    PersonalizedPickCard(
-                        title = "Protein-Packed Breakfasts",
-                        description = "Energising breakfasts to fuel your day.",
-                        imageEmoji = "🥞",
-                        onClick = { viewModel.searchByQuery("breakfast", "high protein") }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                item {
-                    PersonalizedPickCard(
-                        title = "Quick 15-Minute Dinners",
-                        description = "Fast meals for busy weeknights.",
-                        imageEmoji = "⚡",
-                        onClick = { viewModel.searchByQuery("quick dinner", null) }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                item {
-                    PersonalizedPickCard(
-                        title = "Vegetarian Delights",
-                        description = "Delicious plant-based recipes.",
-                        imageEmoji = "🥬",
-                        onClick = { viewModel.searchByQuery("vegetarian", "vegetarian") }
-                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            PersonalizedPickCard(
+                                title = "Protein-Packed Breakfasts",
+                                description = "Energising breakfasts to fuel your day.",
+                                imageEmoji = "🥞",
+                                onClick = {
+                                    viewModel.searchByQuery("breakfast", "high protein")
+                                },
+                                modifier = Modifier.width(260.dp)
+                            )
+                        }
+                        item {
+                            PersonalizedPickCard(
+                                title = "Quick 15-Minute Dinners",
+                                description = "Fast meals for busy weeknights.",
+                                imageEmoji = "⚡",
+                                onClick = {
+                                    viewModel.searchByQuery("quick dinner", null)
+                                },
+                                modifier = Modifier.width(260.dp)
+                            )
+                        }
+                        item {
+                            PersonalizedPickCard(
+                                title = "Vegetarian Delights",
+                                description = "Delicious plant-based recipes.",
+                                imageEmoji = "🥬",
+                                onClick = {
+                                    viewModel.searchByQuery("vegetarian", "vegetarian")
+                                },
+                                modifier = Modifier.width(260.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -194,30 +235,35 @@ fun HomeDiscoverScreen(viewModel: RecipeViewModel) {
 }
 
 @Composable
-fun CategoryCard(category: MealCategory, onClick: () -> Unit) {
+fun CategoryCard(
+    category: MealCategory,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier
-            .width(160.dp)
+        modifier = modifier
             .height(80.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp)
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = category.emoji, fontSize = 32.sp)
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = category.name,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.Black
+            )
+            Text(
+                text = category.emoji,
+                fontSize = 28.sp
             )
         }
     }
@@ -228,16 +274,16 @@ fun PersonalizedPickCard(
     title: String,
     description: String,
     imageEmoji: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(220.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = PinkHeader),
         elevation = CardDefaults.cardElevation(4.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -254,22 +300,14 @@ fun PersonalizedPickCard(
                     text = title,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Color.White
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
                     fontSize = 14.sp,
-                    color = Color.DarkGray
+                    color = Color.White.copy(alpha = 0.9f)
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkPink),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("View recipes", fontSize = 14.sp)
-                }
             }
         }
     }
