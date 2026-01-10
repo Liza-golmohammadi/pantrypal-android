@@ -1,129 +1,71 @@
 package com.example.plswork.auth
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class AuthManager {
+
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
-    // Get current user
-    fun getCurrentUser(): FirebaseUser? = auth.currentUser
+    fun isUserLoggedIn(): Boolean = auth.currentUser != null
 
-    // Check if user is logged in
-    fun isUserLoggedIn(): Boolean = getCurrentUser() != null
+    fun getUserEmail(): String? = auth.currentUser?.email
 
-    // Register new user
-    suspend fun registerUser(
-        email: String,
-        password: String,
-        fullName: String
-    ): kotlin.Result<FirebaseUser> {
-        return try {
-            val result = auth.createUserWithEmailAndPassword(email, password).await()
-            val user = result.user
-
-            if (user != null) {
-                // Save user data to Firestore
-                val userData = hashMapOf(
-                    "uid" to user.uid,
-                    "email" to email,
-                    "fullName" to fullName,
-                    "createdAt" to System.currentTimeMillis()
-                )
-
-                firestore.collection("users")
-                    .document(user.uid)
-                    .set(userData)
-                    .await()
-
-                kotlin.Result.success(user)
-            } else {
-                kotlin.Result.failure(Exception("User creation failed"))
-            }
-        } catch (e: Exception) {
-            kotlin.Result.failure(e)
-        }
-    }
-
-    // Login user
-    suspend fun loginUser(
-        email: String,
-        password: String
-    ): kotlin.Result<FirebaseUser> {
-        return try {
-            val result = auth.signInWithEmailAndPassword(email, password).await()
-            val user = result.user
-
-            if (user != null) {
-                kotlin.Result.success(user)
-            } else {
-                kotlin.Result.failure(Exception("Login failed"))
-            }
-        } catch (e: Exception) {
-            kotlin.Result.failure(e)
-        }
-    }
-
-    // Logout user
     fun logoutUser() {
         auth.signOut()
     }
 
-    // Get user email
-    fun getUserEmail(): String? = getCurrentUser()?.email
-
-    // Get user ID
-    fun getUserId(): String? = getCurrentUser()?.uid
-
-    // Re-authenticate user
-    private suspend fun reauthenticate(currentPassword: String): kotlin.Result<Unit> {
-        return try {
-            val user = getCurrentUser() ?: return kotlin.Result.failure(Exception("No user logged in"))
-            val email = user.email ?: return kotlin.Result.failure(Exception("No email found"))
-
-            val credential = EmailAuthProvider.getCredential(email, currentPassword)
-            user.reauthenticate(credential).await()
-
-            kotlin.Result.success(Unit)
-        } catch (e: Exception) {
-            kotlin.Result.failure(e)
-        }
+    suspend fun loginUser(email: String, password: String): Result<Unit> = runCatching {
+        auth.signInWithEmailAndPassword(email, password).awaitUnit()
     }
 
-    // Change email
-    suspend fun changeEmail(currentPassword: String, newEmail: String): kotlin.Result<Unit> {
-        return try {
-            val user = getCurrentUser() ?: return kotlin.Result.failure(Exception("No user logged in"))
+    suspend fun registerUser(email: String, password: String, fullName: String): Result<Unit> = runCatching {
+        val result = auth.createUserWithEmailAndPassword(email, password).await()
+        val uid = result.user?.uid ?: throw IllegalStateException("User ID missing after registration")
 
-            val reauth = reauthenticate(currentPassword)
-            if (reauth.isFailure) return kotlin.Result.failure(reauth.exceptionOrNull()!!)
-
-            user.updateEmail(newEmail).await()
-
-            kotlin.Result.success(Unit)
-        } catch (e: Exception) {
-            kotlin.Result.failure(e)
-        }
+        // Optional: store basic user profile in Firestore
+        val userData = hashMapOf(
+            "fullName" to fullName,
+            "email" to email
+        )
+        db.collection("users").document(uid).set(userData).awaitUnit()
     }
 
-    // Change password
-    suspend fun changePassword(currentPassword: String, newPassword: String): kotlin.Result<Unit> {
-        return try {
-            val user = getCurrentUser() ?: return kotlin.Result.failure(Exception("No user logged in"))
+    suspend fun changeEmail(currentPassword: String, newEmail: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: throw IllegalStateException("No user logged in")
+        val currentEmail = user.email ?: throw IllegalStateException("No email found for current user")
 
-            val reauth = reauthenticate(currentPassword)
-            if (reauth.isFailure) return kotlin.Result.failure(reauth.exceptionOrNull()!!)
-
-            user.updatePassword(newPassword).await()
-
-            kotlin.Result.success(Unit)
-        } catch (e: Exception) {
-            kotlin.Result.failure(e)
-        }
+        val credential = EmailAuthProvider.getCredential(currentEmail, currentPassword)
+        user.reauthenticate(credential).awaitUnit()
+        user.updateEmail(newEmail).awaitUnit()
     }
 
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: throw IllegalStateException("No user logged in")
+        val currentEmail = user.email ?: throw IllegalStateException("No email found for current user")
+
+        val credential = EmailAuthProvider.getCredential(currentEmail, currentPassword)
+        user.reauthenticate(credential).awaitUnit()
+        user.updatePassword(newPassword).awaitUnit()
+    }
+
+    // ----------------- Task helpers (no extra dependency needed) -----------------
+
+    private suspend fun <T> Task<T>.await(): T =
+        suspendCancellableCoroutine { cont ->
+            addOnSuccessListener { result -> cont.resume(result) }
+            addOnFailureListener { e -> cont.resumeWithException(e) }
+        }
+
+    private suspend fun Task<*>.awaitUnit(): Unit =
+        suspendCancellableCoroutine { cont ->
+            addOnSuccessListener { cont.resume(Unit) }
+            addOnFailureListener { e -> cont.resumeWithException(e) }
+        }
 }
